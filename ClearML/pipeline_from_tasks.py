@@ -19,7 +19,7 @@ def post_execute_callback_example(a_pipeline, a_node):
 def run_pipeline():
     # 初始化 pipeline
     pipe = PipelineController(
-        name="DeepMindsetPipeline",
+        name="DeepMind", 
         project="VGG16",
         version="1.0.0",
         add_pipeline_tags=True
