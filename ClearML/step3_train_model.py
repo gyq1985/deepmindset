@@ -12,6 +12,9 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.models import load_model
 from clearml import Task
 from PIL import Image
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+import pandas as pd
 
 Task.set_credentials(
     web_host='https://app.clear.ml',
@@ -118,3 +121,27 @@ plt.savefig("training_curves.png")
 img = Image.open("training_curves.png")
 logger.report_image("training_curves", "Accuracy and Loss", iteration=0, image=img)
 print("✅ Model training and logging done." )
+
+# Step 10: Generate confusion matrix
+val_generator.reset()  # Reset the generator before predicting
+pred_probs = model.predict(val_generator)  # Get prediction probabilities
+pred_classes = np.argmax(pred_probs, axis=1)  # Convert probabilities to class indices
+true_classes = val_generator.classes  # Get true labels
+class_labels = list(val_generator.class_indices.keys())  # Get class names
+
+# Compute confusion matrix
+cm = confusion_matrix(true_classes, pred_classes)
+
+# Plot the confusion matrix
+plt.figure(figsize=(6, 5))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=class_labels, yticklabels=class_labels)
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.tight_layout()
+plt.savefig("confusion_matrix.png")
+
+# Upload the confusion matrix image to ClearML
+img_cm = Image.open("confusion_matrix.png")
+logger.report_image("confusion_matrix", "Confusion Matrix", iteration=0, image=img_cm)
