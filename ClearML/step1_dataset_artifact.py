@@ -13,19 +13,19 @@ Task.set_credentials(web_host=web_server,
                     secret=secret_key
                     )
 
-# 初始化 Task（这会是 pipeline 的第一步 task）
+# Initialize the Task (this will be the first step task of the pipeline)
 task = Task.init(project_name="VGG16", task_name="Pipeline Step 1: Dataset Loader")
 
-# # 远程执行
-# task.execute_remotely()
+# # Remote execution
+task.execute_remotely()
 
-# 加载已经上传好的 Dataset 系统中的数据集
+# Load the Dataset in the dataset system that has been uploaded
 dataset = Dataset.get(dataset_name="DeepmindsetDataset", dataset_project="VGG16")
 
-# 下载数据集到本地缓存
+# Download the dataset to the local cache
 local_path = dataset.get_local_copy()
 
-# 上传为 task artifact，让 pipeline 的后续步骤可以使用
+# Upload it as a task artifact to enable the subsequent steps of the pipeline to use it
 task.upload_artifact(name='dataset', artifact_object=local_path)
 
 print(f"Dataset path {local_path} uploaded as artifact to task!")

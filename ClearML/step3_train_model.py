@@ -31,7 +31,7 @@ args = {
 }
 task.connect(args)
 # # Remote execution
-# task.execute_remotely()
+task.execute_remotely()
 # Step 3: Get Uploaded Dataset Paths
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
 train_dir = dataset_task.artifacts['train_dir'].get()
@@ -114,4 +114,4 @@ plt.tight_layout()
 plt.savefig("training_curves.png")
 img = Image.open("training_curves.png")
 logger.report_image("training_curves", "Accuracy and Loss", iteration=0, image=img)
-print("✅ Model training and logging done.")
+print("✅ Model training and logging done." )

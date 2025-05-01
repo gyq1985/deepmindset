@@ -1,7 +1,7 @@
 from clearml import Task
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-web_server = 'https://app.clear.ml'
+web_server = 'https://app.clea  r.ml'
 api_server = 'https://api.clear.ml'
 files_server = 'https://files.clear.ml'
 access_key = 'Q9JQUW7NG3L7UIGUQ99CH6APXN7CWX'
@@ -12,14 +12,14 @@ Task.set_credentials(web_host=web_server,
                     files_host=files_server,
                     key=access_key,
                     secret=secret_key
-                    )
+                    )   
 
-# 初始化 Task
+# Initialization Task
 task = Task.init(project_name="VGG16", task_name="Pipeline step 2 process image dataset")
 
-# 获取参数
+# args
 args = {
-    'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',  # 运行时通过 pipeline 填充
+    'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',  # It is filled through pipeline at runtime
     'img_size': (224, 224),
     'batch_size': 32,
 }
@@ -28,9 +28,9 @@ task.connect(args)
 print('Arguments: {}'.format(args))
 
 # Remote execution
-# task.execute_remotely()
+task.execute_remotely()
 
-# 获取 pipeline 第一步上传的数据集 artifact
+# Obtain the dataset artifact uploaded in the first step of the pipeline
 if args['dataset_task_id']:
     dataset_upload_task = Task.get_task(task_id=args['dataset_task_id'])
     print('Input task id={} artifacts {}'.format(args['dataset_task_id'], list(dataset_upload_task.artifacts.keys())))
@@ -40,12 +40,12 @@ else:
 
 print(f'Dataset local path: {data_path}')
 
-# Dataset 目录结构
+# Dataset menu structure
 train_dir = f"{data_path}/train"
 val_dir = f"{data_path}/val"
 test_dir = f"{data_path}/test"
 
-# 配置 ImageDataGenerator
+#  ImageDataGenerator
 IMG_SIZE = args['img_size']
 BATCH_SIZE = args['batch_size']
 
@@ -88,11 +88,11 @@ test_generator = val_test_datagen.flow_from_directory(
 # Uploading artifacts
 print('Uploading processed dataset generators (train, val, test)')
 
-# 不能直接上传 generator！要保存成文件或中间变量
-# 上传 class indices 映射，供后续步骤使用
+# It can not upload the generator directly! It should be saved as a file or an intermediate variable.
+# Upload the mapping of class indices for use in subsequent steps
 task.upload_artifact('class_indices', train_generator.class_indices)
 
-# 上传文件夹路径（下一个 task 直接读文件）
+# Upload folder path (the next task reads the file directly)
 task.upload_artifact('train_dir', train_dir)
 task.upload_artifact('val_dir', val_dir)
 task.upload_artifact('test_dir', test_dir)
