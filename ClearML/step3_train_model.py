@@ -1,5 +1,8 @@
 import os
+os.environ["MPLBACKEND"] = "Agg" 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 from clearml import Task, Logger
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
