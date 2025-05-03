@@ -149,4 +149,4 @@ report = classification_report(true_classes, pred_classes, target_names=class_la
 with open("classification_report.txt", "w") as f:
     f.write(report)
 
-logger.report_artifact("classification_report", "classification_report.txt")
+task.upload_artifact("classification_report", artifact_object="classification_report.txt")
