@@ -21,7 +21,7 @@ def run_pipeline():
     pipe = PipelineController(
         name="DeepMind", 
         project="VGG16",
-        version="1.0.0",
+        version="2.0.0",
         add_pipeline_tags=True
     )
 
