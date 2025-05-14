@@ -1,9 +1,12 @@
 import os
-import warnings
+os.environ["MPLBACKEND"] = "Agg" 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  
+import matplotlib.pyplot as plt
+import warnings
 import pandas as pd
 from PIL import Image
-import matplotlib.pyplot as plt
 import seaborn as sns
 
 from clearml import Task, Logger
