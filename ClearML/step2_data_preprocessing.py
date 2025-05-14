@@ -20,7 +20,7 @@ task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process ima
 
 # args
 args = {
-    'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',
+    'dataset_task_id': 'cbec31a282d84bdabacf8e44190bf1c4',
     'img_size': (224, 224),
     'batch_size': 32,
 }
