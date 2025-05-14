@@ -25,7 +25,7 @@ def run_pipeline():
         add_pipeline_tags=True
     )
 
-    pipe.set_default_execution_queue("vgg16")  # 替换成你的 ClearML queue 名
+    pipe.set_default_execution_queue("VGG16-v2")  # 替换成你的 ClearML queue 名
 
     # Step 1: Dataset Artifact
     pipe.add_step(
@@ -58,7 +58,7 @@ def run_pipeline():
 
 
     # 启动 pipeline
-    pipe.start(queue="vgg16")  # 用 pipeline 控制器队列
+    pipe.start(queue="vgg16-v2")  # 用 pipeline 控制器队列
     print("✅ Pipeline started.")
 
 if __name__ == "__main__":
