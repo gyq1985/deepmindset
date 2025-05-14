@@ -17,10 +17,7 @@ Task.set_credentials(web_host=web_server,
 task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 1: Dataset Loader")
 
 # # Remote execution
-# task.execute_remotely()
-if Task.running_locally():
-    print("Exiting to wait for remote agent...")
-    exit()
+task.execute_remotely()
 
 # Load the Dataset in the dataset system that has been uploaded
 dataset = Dataset.get(dataset_name="DeepmindsetDataset", dataset_project="VGG16")
