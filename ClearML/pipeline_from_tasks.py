@@ -25,12 +25,12 @@ def run_pipeline():
         add_pipeline_tags=True
     )
 
-    pipe.set_default_execution_queue("VGG16-v2")  # 替换成你的 ClearML queue 名
+    pipe.set_default_execution_queue("vgg16")  # 替换成你的 ClearML queue 名
 
     # Step 1: Dataset Artifact
     pipe.add_step(
         name="step1_dataset_artifact",
-        base_task_project="VGG16",
+        base_task_project="VGG16-v2",
         base_task_name="Pipeline Step 1: Dataset Loader"
     )
 
@@ -38,7 +38,7 @@ def run_pipeline():
     pipe.add_step(
         name="step2_preprocess_data",
         parents=["step1_dataset_artifact"],
-        base_task_project="VGG16",
+        base_task_project="VGG16-v2",
         base_task_name="Pipeline step 2 process image dataset",
         parameter_override={
             "General/dataset_task_id": "${step1_dataset_artifact.id}"
@@ -49,7 +49,7 @@ def run_pipeline():
     pipe.add_step(
         name="step3_train_model",
         parents=["step2_preprocess_data"],
-        base_task_project="VGG16",
+        base_task_project="VGG16-v2",
         base_task_name="Pipeline Step 3 - Train Pneumonia Model",
         parameter_override={
             "General/dataset_task_id": "${step2_preprocess_data.id}"
@@ -58,7 +58,7 @@ def run_pipeline():
 
 
     # 启动 pipeline
-    pipe.start(queue="vgg16-v2")  # 用 pipeline 控制器队列
+    pipe.start(queue="vgg16")  # 用 pipeline 控制器队列
     print("✅ Pipeline started.")
 
 if __name__ == "__main__":
