@@ -33,6 +33,7 @@ Task.set_credentials(
 )
 
 task = Task.init(project_name="VGG16", task_name="Pipeline Step 3 - Train Pneumonia Model")
+task.add_requirements("tensorflow==2.12.0")
 logger = Logger.current_logger()
 
 
