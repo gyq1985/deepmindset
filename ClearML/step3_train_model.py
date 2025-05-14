@@ -104,7 +104,10 @@ best_val_loss = float('inf')
 
 for epoch in range(args['epochs_stage1']):
     model.train()
-    for images, labels in train_loader:
+    total_train_loss = 0.0
+    print(f"Epoch [{epoch+1}/{args['epochs_stage1']}]")
+
+    for batch_idx, (images, labels) in enumerate(train_loader):
         images, labels = images.to(device), labels.to(device)
         labels = nn.functional.one_hot(labels, num_classes=args['num_classes']).float()
         outputs = model(images)
@@ -112,6 +115,13 @@ for epoch in range(args['epochs_stage1']):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        total_train_loss += loss.item()
+
+        if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
+            print(f"  Batch [{batch_idx+1}/{len(train_loader)}] - Loss: {loss.item():.4f}")
+
+    avg_train_loss = total_train_loss / len(train_loader)
+    logger.report_scalar("Train", "Loss", value=avg_train_loss, iteration=epoch)
 
     model.eval()
     val_loss = 0.0
@@ -123,8 +133,12 @@ for epoch in range(args['epochs_stage1']):
             loss = criterion(outputs, labels)
             val_loss += loss.item()
 
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
+    avg_val_loss = val_loss / len(val_loader)
+    logger.report_scalar("Val", "Loss", value=avg_val_loss, iteration=epoch)
+    print(f"  Validation Loss: {avg_val_loss:.4f}")
+
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
         torch.save(model.state_dict(), "best_model_stage1.pth")
         early_stopping_counter = 0
     else:
@@ -142,7 +156,10 @@ best_val_loss = float('inf')
 
 for epoch in range(args['epochs_stage2']):
     model.train()
-    for images, labels in train_loader:
+    total_train_loss = 0.0
+    print(f"[Finetune] Epoch [{epoch+1}/{args['epochs_stage2']}]")
+
+    for batch_idx, (images, labels) in enumerate(train_loader):
         images, labels = images.to(device), labels.to(device)
         labels = nn.functional.one_hot(labels, num_classes=args['num_classes']).float()
         outputs = model(images)
@@ -150,6 +167,13 @@ for epoch in range(args['epochs_stage2']):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        total_train_loss += loss.item()
+
+        if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
+            print(f"  Batch [{batch_idx+1}/{len(train_loader)}] - Loss: {loss.item():.4f}")
+
+    avg_train_loss = total_train_loss / len(train_loader)
+    logger.report_scalar("Train (Finetune)", "Loss", value=avg_train_loss, iteration=epoch)
 
     model.eval()
     val_loss = 0.0
@@ -161,8 +185,12 @@ for epoch in range(args['epochs_stage2']):
             loss = criterion(outputs, labels)
             val_loss += loss.item()
 
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
+    avg_val_loss = val_loss / len(val_loader)
+    logger.report_scalar("Val (Finetune)", "Loss", value=avg_val_loss, iteration=epoch)
+    print(f"  Validation Loss: {avg_val_loss:.4f}")
+
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
         torch.save(model.state_dict(), "best_model_stage2.pth")
         early_stopping_counter = 0
     else:
