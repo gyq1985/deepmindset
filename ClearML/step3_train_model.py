@@ -1,21 +1,26 @@
 import os
-os.environ["MPLBACKEND"] = "Agg"
-import matplotlib
-matplotlib.use('Agg')
+os.environ["MPLBACKEND"] = "Agg" 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
 import warnings
+import pandas as pd
 from PIL import Image
+import seaborn as sns
+
 from clearml import Task, Logger
+
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Flatten, Dense, Dropout
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
 from sklearn.metrics import confusion_matrix, classification_report
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torchvision import datasets, transforms, models
-from torch.utils.data import DataLoader
 
 warnings.filterwarnings('ignore')
 
@@ -28,10 +33,12 @@ Task.set_credentials(
 )
 
 task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 3 - Train Pneumonia Model")
+task.add_requirements("tensorflow==2.12.0")
 logger = Logger.current_logger()
 
+
 args = {
-    'dataset_task_id': '93ffb2ec41694fa893c24775a7503cfb',
+    'dataset_task_id': '405caed14d034630b33cf083a9fcc28d',
     'img_size': (224, 224),
     'batch_size': 32,
     'epochs_stage1': 20,
@@ -47,13 +54,8 @@ args = {
 }
 task.connect(args)
 task.execute_remotely()
-# # Remote execution
-# task.execute_remotely()
-if Task.running_locally():
-    print("Exiting to wait for remote agent...")
-    exit()
 
-# Load dataset directories
+
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
 train_dir = dataset_task.artifacts['train_dir'].get()
 val_dir = dataset_task.artifacts['val_dir'].get()
@@ -63,164 +65,102 @@ class_indices = dataset_task.artifacts['class_indices'].get()
 IMG_SIZE = args['img_size']
 BATCH_SIZE = args['batch_size']
 
-train_transform = transforms.Compose([
-    transforms.Resize(IMG_SIZE),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor()
-])
-val_test_transform = transforms.Compose([
-    transforms.Resize(IMG_SIZE),
-    transforms.ToTensor()
-])
+train_datagen = ImageDataGenerator(rescale=1. / 255)
+val_datagen = ImageDataGenerator(rescale=1. / 255)
+test_datagen = ImageDataGenerator(rescale=1. / 255)
 
-train_dataset = datasets.ImageFolder(train_dir, transform=train_transform)
-val_dataset = datasets.ImageFolder(val_dir, transform=val_test_transform)
-test_dataset = datasets.ImageFolder(test_dir, transform=val_test_transform)
-
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
-# Load VGG16
-model = models.vgg16(pretrained=True)
-for param in model.features.parameters():
-    param.requires_grad = False
-
-model.classifier = nn.Sequential(
-    nn.Flatten(),
-    nn.Linear(25088, args['dense1_units']),
-    nn.ReLU(),
-    nn.Linear(args['dense1_units'], args['dense2_units']),
-    nn.ReLU(),
-    nn.Dropout(args['dropout_rate']),
-    nn.Linear(args['dense2_units'], args['num_classes']),
-    nn.Sigmoid()
+train_generator = train_datagen.flow_from_directory(
+    train_dir, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical', shuffle=True
+)
+val_generator = val_datagen.flow_from_directory(
+    val_dir, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical', shuffle=False
+)
+test_generator = test_datagen.flow_from_directory(
+    test_dir, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical', shuffle=False
 )
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)
 
-criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=args['learning_rate_stage1'])
+input_shape = IMG_SIZE + (3,)
+base_model = VGG16(weights='imagenet', include_top=False, input_shape=input_shape)
 
-# Stage 1 Training
-early_stopping_counter = 0
-best_val_loss = float('inf')
+model = Sequential([
+    base_model,
+    Flatten(),
+    Dense(args['dense1_units'], activation='relu'),
+    Dense(args['dense2_units'], activation='relu'),
+    Dropout(args['dropout_rate']),
+    Dense(args['num_classes'], activation='sigmoid')
+])
 
-for epoch in range(args['epochs_stage1']):
-    model.train()
-    total_train_loss = 0.0
-    print(f"Epoch [{epoch+1}/{args['epochs_stage1']}]")
 
-    for batch_idx, (images, labels) in enumerate(train_loader):
-        images, labels = images.to(device), labels.to(device)
-        labels = nn.functional.one_hot(labels, num_classes=args['num_classes']).float()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total_train_loss += loss.item()
+for layer in base_model.layers:
+    layer.trainable = False
 
-        if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
-            print(f"  Batch [{batch_idx+1}/{len(train_loader)}] - Loss: {loss.item():.4f}")
 
-    avg_train_loss = total_train_loss / len(train_loader)
-    logger.report_scalar("Train", "Loss", value=avg_train_loss, iteration=epoch)
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=args['learning_rate_stage1']),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
 
-    model.eval()
-    val_loss = 0.0
-    with torch.no_grad():
-        for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)
-            labels = nn.functional.one_hot(labels, num_classes=args['num_classes']).float()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            val_loss += loss.item()
+early_stop = EarlyStopping(monitor='val_loss', patience=args['earlystop_patience'], restore_best_weights=True)
+checkpoint_stage1 = ModelCheckpoint("best_model_stage1.keras", monitor='val_accuracy', save_best_only=True)
 
-    avg_val_loss = val_loss / len(val_loader)
-    logger.report_scalar("Val", "Loss", value=avg_val_loss, iteration=epoch)
-    print(f"  Validation Loss: {avg_val_loss:.4f}")
+history_stage1 = model.fit(
+    train_generator,
+    epochs=args['epochs_stage1'],
+    validation_data=val_generator,
+    callbacks=[early_stop, checkpoint_stage1]
+)
 
-    if avg_val_loss < best_val_loss:
-        best_val_loss = avg_val_loss
-        torch.save(model.state_dict(), "best_model_stage1.pth")
-        early_stopping_counter = 0
-    else:
-        early_stopping_counter += 1
-        if early_stopping_counter >= args['earlystop_patience']:
-            break
 
-# Stage 2 Fine-tuning
-for param in list(model.features.parameters())[args['freeze_until_layer']:]:
-    param.requires_grad = True
+for layer in base_model.layers[args['freeze_until_layer']:]:
+    layer.trainable = True
 
-optimizer = optim.Adam(model.parameters(), lr=args['learning_rate_stage2'])
-early_stopping_counter = 0
-best_val_loss = float('inf')
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=args['learning_rate_stage2']),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
 
-for epoch in range(args['epochs_stage2']):
-    model.train()
-    total_train_loss = 0.0
-    print(f"[Finetune] Epoch [{epoch+1}/{args['epochs_stage2']}]")
+checkpoint_stage2 = ModelCheckpoint("best_model_stage2.keras", monitor='val_accuracy', save_best_only=True)
 
-    for batch_idx, (images, labels) in enumerate(train_loader):
-        images, labels = images.to(device), labels.to(device)
-        labels = nn.functional.one_hot(labels, num_classes=args['num_classes']).float()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total_train_loss += loss.item()
+history_stage2 = model.fit(
+    train_generator,
+    epochs=args['epochs_stage2'],
+    validation_data=val_generator,
+    callbacks=[early_stop, checkpoint_stage2]
+)
 
-        if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == len(train_loader):
-            print(f"  Batch [{batch_idx+1}/{len(train_loader)}] - Loss: {loss.item():.4f}")
 
-    avg_train_loss = total_train_loss / len(train_loader)
-    logger.report_scalar("Train (Finetune)", "Loss", value=avg_train_loss, iteration=epoch)
+task.upload_artifact(name="best_model_stage2", artifact_object="best_model_stage2.keras")
 
-    model.eval()
-    val_loss = 0.0
-    with torch.no_grad():
-        for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)
-            labels = nn.functional.one_hot(labels, num_classes=args['num_classes']).float()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            val_loss += loss.item()
 
-    avg_val_loss = val_loss / len(val_loader)
-    logger.report_scalar("Val (Finetune)", "Loss", value=avg_val_loss, iteration=epoch)
-    print(f"  Validation Loss: {avg_val_loss:.4f}")
+plt.figure(figsize=(10, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history_stage2.history['accuracy'], label='Train Acc')
+plt.plot(history_stage2.history['val_accuracy'], label='Val Acc')
+plt.title("Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.legend()
 
-    if avg_val_loss < best_val_loss:
-        best_val_loss = avg_val_loss
-        torch.save(model.state_dict(), "best_model_stage2.pth")
-        early_stopping_counter = 0
-    else:
-        early_stopping_counter += 1
-        if early_stopping_counter >= args['earlystop_patience']:
-            break
+plt.subplot(1, 2, 2)
+plt.plot(history_stage2.history['loss'], label='Train Loss')
+plt.plot(history_stage2.history['val_loss'], label='Val Loss')
+plt.title("Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
 
-task.upload_artifact("best_model_stage2", "best_model_stage2.pth")
+plt.tight_layout()
+plt.savefig("training_curves_vgg16.png")
+logger.report_image("training_curves_vgg16", "Accuracy and Loss", iteration=0, image=Image.open("training_curves_vgg16.png"))
 
-# Evaluation
-model.load_state_dict(torch.load("best_model_stage2.pth"))
-model.eval()
-all_preds = []
-all_labels = []
 
-with torch.no_grad():
-    for images, labels in test_loader:
-        images = images.to(device)
-        outputs = model(images)
-        preds = torch.argmax(outputs, dim=1).cpu().numpy()
-        all_preds.extend(preds)
-        all_labels.extend(labels.numpy())
+test_generator.reset()
+predictions = model.predict(test_generator)
+pred_classes = np.argmax(predictions, axis=1)
+true_classes = test_generator.classes
+class_labels = list(test_generator.class_indices.keys())
 
-cm = confusion_matrix(all_labels, all_preds)
-class_labels = list(class_indices.keys())
+cm = confusion_matrix(true_classes, pred_classes)
 
 plt.figure(figsize=(6, 5))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)
@@ -231,7 +171,7 @@ plt.tight_layout()
 plt.savefig("confusion_matrix_vgg16.png")
 logger.report_image("confusion_matrix_vgg16", "Confusion Matrix", iteration=0, image=Image.open("confusion_matrix_vgg16.png"))
 
-report = classification_report(all_labels, all_preds, target_names=class_labels)
+report = classification_report(true_classes, pred_classes, target_names=class_labels)
 with open("classification_report_vgg16.txt", "w") as f:
     f.write(report)
 task.upload_artifact("classification_report_vgg16", artifact_object="classification_report_vgg16.txt")

@@ -1,8 +1,7 @@
 from clearml import Task
-import os
-from torchvision import datasets, transforms
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-web_server = 'https://app.clear.ml'
+web_server = 'https://app.clea  r.ml'
 api_server = 'https://api.clear.ml'
 files_server = 'https://files.clear.ml'
 access_key = 'Q9JQUW7NG3L7UIGUQ99CH6APXN7CWX'
@@ -20,7 +19,7 @@ task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process ima
 
 # args
 args = {
-    'dataset_task_id': 'cbec31a282d84bdabacf8e44190bf1c4',
+    'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',  # It is filled through pipeline at runtime
     'img_size': (224, 224),
     'batch_size': 32,
 }
@@ -30,7 +29,6 @@ print('Arguments: {}'.format(args))
 
 # Remote execution
 task.execute_remotely()
-
 
 # Obtain the dataset artifact uploaded in the first step of the pipeline
 if args['dataset_task_id']:
@@ -42,40 +40,59 @@ else:
 
 print(f'Dataset local path: {data_path}')
 
-# Dataset folder structure
-train_dir = os.path.join(data_path, "train")
-val_dir = os.path.join(data_path, "val")
-test_dir = os.path.join(data_path, "test")
+# Dataset menu structure
+train_dir = f"{data_path}/train"
+val_dir = f"{data_path}/val"
+test_dir = f"{data_path}/test"
 
-# Image transforms
+#  ImageDataGenerator
 IMG_SIZE = args['img_size']
 BATCH_SIZE = args['batch_size']
 
-train_transforms = transforms.Compose([
-    transforms.Resize(IMG_SIZE),
-    transforms.RandomRotation(20),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomResizedCrop(IMG_SIZE),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2),
-    transforms.ToTensor(),
-])
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    zoom_range=0.2,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    horizontal_flip=True
+)
 
-val_test_transforms = transforms.Compose([
-    transforms.Resize(IMG_SIZE),
-    transforms.CenterCrop(IMG_SIZE),
-    transforms.ToTensor(),
-])
+val_test_datagen = ImageDataGenerator(rescale=1./255)
 
-train_dataset = datasets.ImageFolder(train_dir, transform=train_transforms)
-val_dataset = datasets.ImageFolder(val_dir, transform=val_test_transforms)
-test_dataset = datasets.ImageFolder(test_dir, transform=val_test_transforms)
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=True,
+    seed=42
+)
 
-# Save class indices for later use
-class_indices = train_dataset.class_to_idx
+val_generator = val_test_datagen.flow_from_directory(
+    val_dir,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=False
+)
+
+test_generator = val_test_datagen.flow_from_directory(
+    test_dir,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=False
+)
 
 # Uploading artifacts
-print('Uploading processed dataset metadata')
-task.upload_artifact('class_indices', class_indices)
+print('Uploading processed dataset generators (train, val, test)')
+
+# It can not upload the generator directly! It should be saved as a file or an intermediate variable.
+# Upload the mapping of class indices for use in subsequent steps
+task.upload_artifact('class_indices', train_generator.class_indices)
+
+# Upload folder path (the next task reads the file directly)
 task.upload_artifact('train_dir', train_dir)
 task.upload_artifact('val_dir', val_dir)
 task.upload_artifact('test_dir', test_dir)
