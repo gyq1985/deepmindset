@@ -28,7 +28,6 @@ Task.set_credentials(
 )
 
 task = Task.init(project_name="VGG16", task_name="Pipeline Step 3 - Train Pneumonia Model")
-task.add_requirements("torch==2.0.0")
 logger = Logger.current_logger()
 
 args = {
