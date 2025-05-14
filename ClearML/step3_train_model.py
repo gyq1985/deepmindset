@@ -27,7 +27,7 @@ Task.set_credentials(
     secret='ZDyUBTNev2TSyADi6gkFMEPRwMUBughNu4uVKUPjH7UsImaBOTLh2B6nVU2CwvYQTcw'
 )
 
-task = Task.init(project_name="VGG16", task_name="Pipeline Step 3 - Train Pneumonia Model")
+task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 3 - Train Pneumonia Model")
 logger = Logger.current_logger()
 
 args = {

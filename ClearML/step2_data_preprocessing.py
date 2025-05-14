@@ -16,7 +16,7 @@ Task.set_credentials(web_host=web_server,
                     )   
 
 # Initialization Task
-task = Task.init(project_name="VGG16", task_name="Pipeline step 2 process image dataset")
+task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process image dataset")
 
 # args
 args = {

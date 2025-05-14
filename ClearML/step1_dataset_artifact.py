@@ -14,7 +14,7 @@ Task.set_credentials(web_host=web_server,
                     )
 
 # Initialize the Task (this will be the first step task of the pipeline)
-task = Task.init(project_name="VGG16", task_name="Pipeline Step 1: Dataset Loader")
+task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 1: Dataset Loader")
 
 # # Remote execution
 task.execute_remotely()
