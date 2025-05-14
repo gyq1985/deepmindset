@@ -1,7 +1,7 @@
 from clearml import Task
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-web_server = 'https://app.clear.ml'
+web_server = 'https://app.clea  r.ml'
 api_server = 'https://api.clear.ml'
 files_server = 'https://files.clear.ml'
 access_key = 'Q9JQUW7NG3L7UIGUQ99CH6APXN7CWX'
