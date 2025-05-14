@@ -30,6 +30,11 @@ print('Arguments: {}'.format(args))
 
 # Remote execution
 task.execute_remotely()
+# # Remote execution
+task.execute_remotely()
+if Task.running_locally():
+    print("Exiting to wait for remote agent...")
+    exit()
 
 # Obtain the dataset artifact uploaded in the first step of the pipeline
 if args['dataset_task_id']:

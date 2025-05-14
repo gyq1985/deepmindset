@@ -47,6 +47,11 @@ args = {
 }
 task.connect(args)
 task.execute_remotely()
+# # Remote execution
+# task.execute_remotely()
+if Task.running_locally():
+    print("Exiting to wait for remote agent...")
+    exit()
 
 # Load dataset directories
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
