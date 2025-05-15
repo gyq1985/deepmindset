@@ -13,7 +13,7 @@ Task.set_credentials(
 )
 
 # 初始化任务
-task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process image dataset (PyTorch)")
+task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process image dataset")
 args = {
     'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',
     'img_size': (224, 224),
