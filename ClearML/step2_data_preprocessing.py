@@ -16,7 +16,7 @@ Task.set_credentials(web_host=web_server,
 
 # Initialization Task
 task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process image dataset")
-
+task.set_base_docker("tensorflow/tensorflow:2.18.0-gpu")
 # args
 args = {
     'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',  # It is filled through pipeline at runtime
