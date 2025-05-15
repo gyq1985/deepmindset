@@ -42,6 +42,7 @@ args = {
     'num_classes': 4
 }
 task.connect(args)
+task.execute_remotely()
 
 # Get dataset artifact paths
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
@@ -51,7 +52,7 @@ test_dir = dataset_task.artifacts['test_dir'].get()
 class_indices = dataset_task.artifacts['class_indices'].get()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+print("GPU:",torch.cuda.is_available())
 # Data preprocessing
 transform_train = transforms.Compose([
     transforms.Resize(args['img_size']),
