@@ -12,9 +12,9 @@ EXECUTION_QUEUE = "vgg16"
 def run_pipeline():
     # Connecting ClearML with the current pipeline
     pipe = PipelineController(
-        name="AI_Studio_Pipeline_Demo", 
-        project="VGG16-v2", 
-        version="2.0.0", 
+        name="DeepMind", 
+        project="VGG16", 
+        version="3.0.0", 
         add_pipeline_tags=True
     )
 

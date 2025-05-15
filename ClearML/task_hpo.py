@@ -22,7 +22,7 @@ args = {
     'base_train_task_id': '7af6b471472348e7adfa087da8feec2e',  
     'num_trials': 5,
     'time_limit_minutes': 30,
-    'test_queue': 'pytorch-queue',
+    'test_queue': None,
     'dataset_task_id': '405caed14d034630b33cf083a9fcc28d',
     'batch_size': 32,
     'learning_rate_stage2': 1e-5,
