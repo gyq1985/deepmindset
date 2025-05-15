@@ -1,9 +1,12 @@
 from clearml import Task
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from PIL import Image
+from tqdm import tqdm
 import os
+import shutil
 
-# 连接 ClearML
+# ClearML 连接
 Task.set_credentials(
     web_host='https://app.clear.ml',
     api_host='https://api.clear.ml',
@@ -12,69 +15,54 @@ Task.set_credentials(
     secret='ZDyUBTNev2TSyADi6gkFMEPRwMUBughNu4uVKUPjH7UsImaBOTLh2B6nVU2CwvYQTcw'
 )
 
-# 初始化任务
+
 task = Task.init(project_name="VGG16-v2", task_name="Pipeline step 2 process image dataset")
 args = {
     'dataset_task_id': '70d3e1b45c89407c9f19ffdb0b4e35b8',
     'img_size': (224, 224),
-    'batch_size': 32,
+    'num_augmented_per_image': 1  
 }
-task.connect(args)
+args = task.connect(args)
 task.execute_remotely()
 
-# 获取数据路径
-if args['dataset_task_id']:
-    dataset_upload_task = Task.get_task(task_id=args['dataset_task_id'])
-    print(f"Input task id={args['dataset_task_id']} artifacts: {list(dataset_upload_task.artifacts.keys())}")
-    data_path = dataset_upload_task.artifacts['dataset'].get_local_copy()
-else:
-    raise ValueError("Missing dataset link")
 
-print(f'Dataset local path: {data_path}')
-
-# 数据集结构
+dataset_task = Task.get_task(task_id=args['dataset_task_id'])
+data_path = dataset_task.artifacts['dataset'].get_local_copy()
 train_dir = os.path.join(data_path, "train")
 val_dir = os.path.join(data_path, "val")
 test_dir = os.path.join(data_path, "test")
 
-# 设置图像变换
-IMG_SIZE = args['img_size']
-BATCH_SIZE = args['batch_size']
 
-# 保持一致的数据增强
-train_transform = transforms.Compose([
-    transforms.Resize(IMG_SIZE),  # Resize 类似 target_size
+IMG_SIZE = args['img_size']
+transform = transforms.Compose([
+    transforms.Resize(IMG_SIZE),
     transforms.RandomRotation(20),
-    transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),  # 平移
-    transforms.RandomResizedCrop(IMG_SIZE, scale=(0.8, 1.0)),  # 缩放
+    transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+    transforms.RandomResizedCrop(IMG_SIZE, scale=(0.8, 1.0)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3),  # 等价于 rescale=1./255 的中心化
 ])
 
-val_test_transform = transforms.Compose([
-    transforms.Resize(IMG_SIZE),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.5]*3, std=[0.5]*3),
-])
+aug_train_dir = os.path.join(data_path, "aug_train")
+os.makedirs(aug_train_dir, exist_ok=True)
 
-# 加载图像数据集
-train_dataset = datasets.ImageFolder(root=train_dir, transform=train_transform)
-val_dataset = datasets.ImageFolder(root=val_dir, transform=val_test_transform)
-test_dataset = datasets.ImageFolder(root=test_dir, transform=val_test_transform)
+raw_dataset = datasets.ImageFolder(root=train_dir)
 
-# 构建 DataLoader（等价于 flow_from_directory）
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+for class_idx, class_name in enumerate(raw_dataset.classes):
+    class_input_dir = os.path.join(train_dir, class_name)
+    class_output_dir = os.path.join(aug_train_dir, class_name)
+    os.makedirs(class_output_dir, exist_ok=True)
 
-# 上传 class indices（等价于 train_generator.class_indices）
-task.upload_artifact('class_indices', train_dataset.class_to_idx)
+    for idx, (img_path, _) in enumerate(raw_dataset.samples):
+        img = Image.open(img_path).convert("RGB")
+        for aug_id in range(args['num_augmented_per_image']):
+            transformed_img = transform(img)
+            save_path = os.path.join(class_output_dir, f"{idx}_{aug_id}.png")
+            transforms.ToPILImage()(transformed_img).save(save_path)
 
-# 上传三个路径信息（作为 downstream pipeline 的输入）
-task.upload_artifact('train_dir', train_dir)
+task.upload_artifact('processed_train_dir', aug_train_dir)
 task.upload_artifact('val_dir', val_dir)
 task.upload_artifact('test_dir', test_dir)
+task.upload_artifact('class_indices', raw_dataset.class_to_idx)
 
-print("Artifacts uploaded!")
-print("Done.")
+print("✅ Step 2 over")

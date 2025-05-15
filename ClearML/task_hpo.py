@@ -45,10 +45,10 @@ task.execute_remotely(queue_name=args['test_queue'])
 BASE_TRAIN_TASK_ID = args['base_train_task_id']
 dataset_id = args['dataset_task_id']
 logger.info(f"Using base train task: {BASE_TRAIN_TASK_ID}")
-logger.info(f"Using dataset id: {dataset_id}")
+# logger.info(f"Using dataset id: {dataset_id}")
 
 # 确保数据集存在
-Dataset.get(dataset_id=dataset_id)
+# Dataset.get(dataset_id=dataset_id)
 
 # 定义搜索空间
 hpo = HyperParameterOptimizer(

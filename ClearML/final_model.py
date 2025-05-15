@@ -63,32 +63,24 @@ args['learning_rate_stage2'] = float(best_params.get('learning_rate_stage2', arg
 
 logger.info(f"Using best parameters: batch_size={args['batch_size']}, learning_rate_stage2={args['learning_rate_stage2']}")
 
-# Load dataset
+# Load processed dataset directories from artifact
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
 train_dir = dataset_task.artifacts['train_dir'].get()
 val_dir = dataset_task.artifacts['val_dir'].get()
 test_dir = dataset_task.artifacts['test_dir'].get()
+class_indices = dataset_task.artifacts['class_indices'].get()
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-transform_train = transforms.Compose([
-    transforms.Resize(args['img_size']),
-    transforms.RandomRotation(20),
-    transforms.RandomAffine(0, translate=(0.1, 0.1)),
-    transforms.RandomResizedCrop(args['img_size'], scale=(0.8, 1.0)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize([0.5]*3, [0.5]*3)
-])
-
-transform_test = transforms.Compose([
+transform = transforms.Compose([
     transforms.Resize(args['img_size']),
     transforms.ToTensor(),
     transforms.Normalize([0.5]*3, [0.5]*3)
 ])
 
-train_dataset = datasets.ImageFolder(train_dir, transform=transform_train)
-val_dataset = datasets.ImageFolder(val_dir, transform=transform_test)
-test_dataset = datasets.ImageFolder(test_dir, transform=transform_test)
+train_dataset = datasets.ImageFolder(train_dir, transform=transform)
+val_dataset = datasets.ImageFolder(val_dir, transform=transform)
+test_dataset = datasets.ImageFolder(test_dir, transform=transform)
 
 train_loader = DataLoader(train_dataset, batch_size=args['batch_size'], shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=args['batch_size'], shuffle=False)
