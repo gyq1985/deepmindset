@@ -11,6 +11,7 @@ from torchvision import models, transforms, datasets
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix, classification_report
 from PIL import Image
+from tqdm import tqdm
 from clearml import Task, Logger
 
 # ClearML Task init
@@ -44,21 +45,32 @@ args = {
 task.connect(args)
 task.execute_remotely()
 
-# Get dataset artifact paths
+# Load dataset artifacts
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
-train_dir = dataset_task.artifacts['processed_train_dir'].get()
+train_dir = dataset_task.artifacts['train_dir'].get()
 val_dir = dataset_task.artifacts['val_dir'].get()
 test_dir = dataset_task.artifacts['test_dir'].get()
 class_indices = dataset_task.artifacts['class_indices'].get()
 
-# Data transforms (only normalization)
+# Transforms
+transform_train = transforms.Compose([
+    transforms.Resize(args['img_size']),
+    transforms.RandomRotation(20),
+    transforms.RandomAffine(0, translate=(0.1, 0.1)),
+    transforms.RandomResizedCrop(args['img_size'], scale=(0.8, 1.0)),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize([0.5]*3, [0.5]*3)
+])
+
 transform_test = transforms.Compose([
     transforms.Resize(args['img_size']),
     transforms.ToTensor(),
     transforms.Normalize([0.5]*3, [0.5]*3)
 ])
 
-train_dataset = datasets.ImageFolder(train_dir, transform=transform_test)
+# Data loaders
+train_dataset = datasets.ImageFolder(train_dir, transform=transform_train)
 val_dataset = datasets.ImageFolder(val_dir, transform=transform_test)
 test_dataset = datasets.ImageFolder(test_dir, transform=transform_test)
 
@@ -66,7 +78,7 @@ train_loader = DataLoader(train_dataset, batch_size=args['batch_size'], shuffle=
 val_loader = DataLoader(val_dataset, batch_size=args['batch_size'], shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=args['batch_size'], shuffle=False)
 
-# Model definition
+# Model
 model = models.vgg16_bn(pretrained=True)
 for param in model.features.parameters():
     param.requires_grad = False
@@ -80,12 +92,12 @@ model.classifier = nn.Sequential(
     nn.Linear(args['dense2_units'], args['num_classes'])
 )
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.classifier.parameters(), lr=args['learning_rate_stage1'])
 
+# Training function
 def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, earlystop_patience):
     best_val_acc, patience = 0.0, 0
     best_model_wts = None
@@ -94,7 +106,7 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
     for epoch in range(epochs):
         model.train()
         running_loss, correct = 0.0, 0
-        for inputs, labels in train_loader:
+        for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}"):
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -142,10 +154,9 @@ model, acc1, val_acc1, loss1, val_loss1 = train_model(
     args['epochs_stage1'], args['earlystop_patience']
 )
 
-# Stage 2 fine-tuning
+# Stage 2
 for param in model.features[args['freeze_until_layer']:].parameters():
     param.requires_grad = True
-
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args['learning_rate_stage2'])
 model, acc2, val_acc2, loss2, val_loss2 = train_model(
     model, train_loader, val_loader, optimizer, loss_fn,
@@ -155,7 +166,7 @@ model, acc2, val_acc2, loss2, val_loss2 = train_model(
 torch.save(model.state_dict(), "best_model_stage2.pt")
 task.upload_artifact("best_model_stage2", artifact_object="best_model_stage2.pt")
 
-# Plotting
+# Plot
 plt.figure(figsize=(10, 4))
 plt.subplot(1, 2, 1)
 plt.plot(acc1 + acc2, label="Train Acc")
@@ -171,7 +182,7 @@ plt.tight_layout()
 plt.savefig("training_curves_vgg16_pytorch.png")
 logger.report_image("training_curves_vgg16_pytorch", "Training Curves", iteration=0, image=Image.open("training_curves_vgg16_pytorch.png"))
 
-# Evaluation
+# Final evaluation
 model.eval()
 all_preds, all_labels = [], []
 with torch.no_grad():
