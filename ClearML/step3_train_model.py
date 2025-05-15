@@ -13,6 +13,8 @@ from clearml import Task, Logger
 
 
 import tensorflow as tf
+print("TensorFlow version:", tf.__version__)
+print("Num GPUs Available:", len(tf.config.list_physical_devices('GPU')))
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Flatten, Dense, Dropout
 from tensorflow.keras.applications import VGG16
