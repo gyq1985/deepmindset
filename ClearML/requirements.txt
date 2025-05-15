@@ -1,7 +1,8 @@
-clearml==1.18.0
-numpy==1.24.3
-pandas==2.2.2
-matplotlib==3.8.4
-seaborn==0.13.2
-scikit-learn==1.4.2
-tensorflow==2.17.0
+clearml==1.18.0  
+numpy==1.24.3  
+pandas==2.2.2  
+matplotlib==3.8.4  
+seaborn==0.13.2  
+scikit-learn==1.4.2  
+tensorflow==2.18.0
+
