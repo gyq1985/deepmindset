@@ -80,7 +80,9 @@ model.classifier = nn.Sequential(
     nn.Linear(args['dense2_units'], args['num_classes'])
 )
 
-model = model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.classifier.parameters(), lr=args['learning_rate_stage1'])
 
@@ -93,7 +95,7 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         model.train()
         running_loss, correct = 0.0, 0
         for inputs, labels in train_loader:
-            inputs, labels = inputs.to(model.device), labels.to(model.device)
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = loss_fn(outputs, labels)
