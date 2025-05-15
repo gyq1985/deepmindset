@@ -11,7 +11,6 @@ from torchvision import models, transforms, datasets
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix, classification_report
 from PIL import Image
-from tqdm import tqdm
 from clearml import Task, Logger
 
 # ClearML Task init
@@ -45,14 +44,16 @@ args = {
 task.connect(args)
 task.execute_remotely()
 
-# Load dataset artifacts
+# Get dataset artifact paths
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
 train_dir = dataset_task.artifacts['train_dir'].get()
 val_dir = dataset_task.artifacts['val_dir'].get()
 test_dir = dataset_task.artifacts['test_dir'].get()
 class_indices = dataset_task.artifacts['class_indices'].get()
 
-# Transforms
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("GPU:",torch.cuda.is_available())
+# Data preprocessing
 transform_train = transforms.Compose([
     transforms.Resize(args['img_size']),
     transforms.RandomRotation(20),
@@ -69,7 +70,6 @@ transform_test = transforms.Compose([
     transforms.Normalize([0.5]*3, [0.5]*3)
 ])
 
-# Data loaders
 train_dataset = datasets.ImageFolder(train_dir, transform=transform_train)
 val_dataset = datasets.ImageFolder(val_dir, transform=transform_test)
 test_dataset = datasets.ImageFolder(test_dir, transform=transform_test)
@@ -78,7 +78,7 @@ train_loader = DataLoader(train_dataset, batch_size=args['batch_size'], shuffle=
 val_loader = DataLoader(val_dataset, batch_size=args['batch_size'], shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=args['batch_size'], shuffle=False)
 
-# Model
+# Model definition
 model = models.vgg16_bn(pretrained=True)
 for param in model.features.parameters():
     param.requires_grad = False
@@ -91,22 +91,22 @@ model.classifier = nn.Sequential(
     nn.Dropout(args['dropout_rate']),
     nn.Linear(args['dense2_units'], args['num_classes'])
 )
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.classifier.parameters(), lr=args['learning_rate_stage1'])
 
-# Training function
+# Helper function for training
 def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, earlystop_patience):
-    best_val_acc, patience = 0.0, 0
+    best_val_acc = 0.0
     best_model_wts = None
-    train_acc_history, val_acc_history, train_loss_history, val_loss_history = [], [], [], []
-
+    patience = 0
+    train_acc_history, val_acc_history = [], []
+    train_loss_history, val_loss_history = [], []
+    
     for epoch in range(epochs):
         model.train()
         running_loss, correct = 0.0, 0
-        for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}"):
+        for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -115,12 +115,13 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
             optimizer.step()
             running_loss += loss.item() * inputs.size(0)
             correct += (outputs.argmax(1) == labels).sum().item()
-
+        
         epoch_loss = running_loss / len(train_loader.dataset)
         epoch_acc = correct / len(train_loader.dataset)
         train_loss_history.append(epoch_loss)
         train_acc_history.append(epoch_acc)
 
+        # Validation
         model.eval()
         val_loss, val_correct = 0.0, 0
         with torch.no_grad():
@@ -136,6 +137,8 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         val_loss_history.append(val_loss)
         val_acc_history.append(val_acc)
 
+        print(f"Epoch {epoch+1}/{epochs} - Train Acc: {epoch_acc:.4f}, Val Acc: {val_acc:.4f}")
+
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_model_wts = model.state_dict()
@@ -143,30 +146,33 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         else:
             patience += 1
             if patience >= earlystop_patience:
+                print("Early stopping")
                 break
 
     model.load_state_dict(best_model_wts)
     return model, train_acc_history, val_acc_history, train_loss_history, val_loss_history
 
-# Stage 1
+# Stage 1 Training
 model, acc1, val_acc1, loss1, val_loss1 = train_model(
     model, train_loader, val_loader, optimizer, loss_fn,
     args['epochs_stage1'], args['earlystop_patience']
 )
 
-# Stage 2
+# Stage 2 Fine-tuning
 for param in model.features[args['freeze_until_layer']:].parameters():
     param.requires_grad = True
+
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args['learning_rate_stage2'])
 model, acc2, val_acc2, loss2, val_loss2 = train_model(
     model, train_loader, val_loader, optimizer, loss_fn,
     args['epochs_stage2'], args['earlystop_patience']
 )
 
+# Save best model
 torch.save(model.state_dict(), "best_model_stage2.pt")
 task.upload_artifact("best_model_stage2", artifact_object="best_model_stage2.pt")
 
-# Plot
+# Plot accuracy and loss
 plt.figure(figsize=(10, 4))
 plt.subplot(1, 2, 1)
 plt.plot(acc1 + acc2, label="Train Acc")
@@ -182,9 +188,10 @@ plt.tight_layout()
 plt.savefig("training_curves_vgg16_pytorch.png")
 logger.report_image("training_curves_vgg16_pytorch", "Training Curves", iteration=0, image=Image.open("training_curves_vgg16_pytorch.png"))
 
-# Final evaluation
+# Evaluation on test set
 model.eval()
-all_preds, all_labels = [], []
+all_preds = []
+all_labels = []
 with torch.no_grad():
     for inputs, labels in test_loader:
         inputs = inputs.to(device)
@@ -194,7 +201,9 @@ with torch.no_grad():
 
 cm = confusion_matrix(all_labels, all_preds)
 plt.figure(figsize=(6, 5))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=train_dataset.classes, yticklabels=train_dataset.classes)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=train_dataset.classes,
+            yticklabels=train_dataset.classes)
 plt.title('Confusion Matrix')
 plt.xlabel('Predicted')
 plt.ylabel('True')
@@ -206,3 +215,4 @@ report = classification_report(all_labels, all_preds, target_names=train_dataset
 with open("classification_report_vgg16_pytorch.txt", "w") as f:
     f.write(report)
 task.upload_artifact("classification_report_vgg16_pytorch", artifact_object="classification_report_vgg16_pytorch.txt")
+
