@@ -35,8 +35,6 @@ Task.set_credentials(
 )
 
 task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 3 - Train Pneumonia Model")
-task.set_base_docker(docker_image='tensorflow/tensorflow:2.18.0-gpu')
-
 logger = Logger.current_logger()
 
 
