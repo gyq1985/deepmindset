@@ -1,5 +1,5 @@
-# Dockerfile
-FROM tensorflow/tensorflow:2.15.0-gpu
+# 使用 NVIDIA NGC 上的 TensorFlow 容器，已包含 CUDA 12.2 + CuDNN 9.3
+FROM nvcr.io/nvidia/tensorflow:23.10-tf2-py3
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir \

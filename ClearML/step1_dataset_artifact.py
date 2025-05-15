@@ -18,7 +18,7 @@ task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 1: Dataset Lo
 # task.set_base_docker("tensorflow/tensorflow:2.18.0-gpu")
 
 # # Remote execution
-# task.execute_remotely()
+task.execute_remotely()
 
 # Load the Dataset in the dataset system that has been uploaded
 dataset = Dataset.get(dataset_name="DeepmindsetDataset", dataset_project="VGG16")

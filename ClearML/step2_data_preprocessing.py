@@ -28,7 +28,7 @@ task.connect(args)
 print('Arguments: {}'.format(args))
 
 # Remote execution
-# task.execute_remotely()
+task.execute_remotely()
 
 # Obtain the dataset artifact uploaded in the first step of the pipeline
 if args['dataset_task_id']:
