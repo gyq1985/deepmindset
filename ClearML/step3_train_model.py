@@ -56,7 +56,7 @@ args = {
     'num_classes': 4
 }
 task.connect(args)
-task.execute_remotely()
+# task.execute_remotely()
 
 
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
