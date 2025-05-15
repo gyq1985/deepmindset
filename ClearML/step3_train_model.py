@@ -113,7 +113,7 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         val_loss, val_correct = 0.0, 0
         with torch.no_grad():
             for inputs, labels in val_loader:
-                inputs, labels = inputs.to(model.device), labels.to(model.device)
+                inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 loss = loss_fn(outputs, labels)
                 val_loss += loss.item() * inputs.size(0)
@@ -176,7 +176,7 @@ model.eval()
 all_preds, all_labels = [], []
 with torch.no_grad():
     for inputs, labels in test_loader:
-        inputs = inputs.to(model.device)
+        inputs = inputs.to(device)
         outputs = model(inputs)
         all_preds.extend(outputs.argmax(1).cpu().numpy())
         all_labels.extend(labels.numpy())
