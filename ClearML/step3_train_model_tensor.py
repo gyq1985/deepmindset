@@ -40,7 +40,7 @@ task = Task.init(project_name="VGG16-v2", task_name="Pipeline Step 3 - Train Pne
 logger = Logger.current_logger()
 
 
-args = {
+args = {    
     'dataset_task_id': '405caed14d034630b33cf083a9fcc28d',
     'img_size': (224, 224),
     'batch_size': 32,
