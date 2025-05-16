@@ -120,7 +120,7 @@ for epoch in range(args['epochs_stage2']):
     epoch_acc = correct / len(train_loader.dataset)
     task.get_logger().report_scalar("train", "loss", epoch_loss, iteration=epoch)
     task.get_logger().report_scalar("train", "accuracy", epoch_acc, iteration=epoch)
-    logger.info(f"[Epoch {epoch+1}] Train Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.4f}")
+    log.info(f"[Epoch {epoch+1}] Train Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.4f}")
 
     # Validation
     model.eval()
