@@ -5,15 +5,12 @@ import json
 import torch
 import logging
 import seaborn as sns
-import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
-from clearml import Task, Logger, Dataset
+from clearml import Task, Logger
 from sklearn.metrics import confusion_matrix, classification_report
-from torchvision import datasets, transforms, models
-from torch.utils.data import DataLoader
-import torch.nn as nn
-import torch.optim as optim
+from torchvision import models
+from utils import load_transformed_datasets
 
 # Setup
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +26,7 @@ logger = Logger.current_logger()
 
 # Connect HPO result and dataset ID
 args = {
-    'dataset_task_id': '405caed14d034630b33cf083a9fcc28d',
+    'dataset_task_id': None,  # to be overridden in pipeline
     'hpo_task_id': None,
     'img_size': (224, 224),
     'batch_size': 32,
@@ -45,10 +42,9 @@ args = task.connect(args)
 task.execute_remotely()
 
 # Retrieve HPO best parameters
-hpo_task_id = args['hpo_task_id']
-if not hpo_task_id:
+if not args['hpo_task_id']:
     raise ValueError("Missing hpo_task_id for retrieving best hyperparameters")
-hpo_task = Task.get_task(task_id=hpo_task_id)
+hpo_task = Task.get_task(task_id=args['hpo_task_id'])
 logger.report_text(f"Using HPO Task: {hpo_task.name}")
 
 best_params = hpo_task.get_parameter('best_parameters')
@@ -69,34 +65,28 @@ train_dir = dataset_task.artifacts['train_dir'].get()
 val_dir = dataset_task.artifacts['val_dir'].get()
 test_dir = dataset_task.artifacts['test_dir'].get()
 class_indices = dataset_task.artifacts['class_indices'].get()
+# class_names = [cls for cls, _ in sorted(class_indices.items(), key=lambda item: item[1])]
+
+# Load DataLoaders with transforms
+train_loader, val_loader, test_loader, _, train_dataset = load_transformed_datasets(
+    train_dir, val_dir, test_dir,
+    img_size=args['img_size'],
+    batch_size=args['batch_size']
+)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-transform = transforms.Compose([
-    transforms.Resize(args['img_size']),
-    transforms.ToTensor(),
-    transforms.Normalize([0.5]*3, [0.5]*3)
-])
-
-train_dataset = datasets.ImageFolder(train_dir, transform=transform)
-val_dataset = datasets.ImageFolder(val_dir, transform=transform)
-test_dataset = datasets.ImageFolder(test_dir, transform=transform)
-
-train_loader = DataLoader(train_dataset, batch_size=args['batch_size'], shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=args['batch_size'], shuffle=False)
-test_loader = DataLoader(test_dataset, batch_size=args['batch_size'], shuffle=False)
 
 # Define model
 model = models.vgg16_bn(pretrained=True)
 for param in model.features.parameters():
     param.requires_grad = False
-model.classifier = nn.Sequential(
-    nn.Linear(25088, args['dense1_units']),
-    nn.ReLU(),
-    nn.Linear(args['dense1_units'], args['dense2_units']),
-    nn.ReLU(),
-    nn.Dropout(args['dropout_rate']),
-    nn.Linear(args['dense2_units'], args['num_classes'])
+model.classifier = torch.nn.Sequential(
+    torch.nn.Linear(25088, args['dense1_units']),
+    torch.nn.ReLU(),
+    torch.nn.Linear(args['dense1_units'], args['dense2_units']),
+    torch.nn.ReLU(),
+    torch.nn.Dropout(args['dropout_rate']),
+    torch.nn.Linear(args['dense2_units'], args['num_classes'])
 )
 model = model.to(device)
 
@@ -105,8 +95,8 @@ for param in model.features[args['freeze_until_layer']:].parameters():
     param.requires_grad = True
 
 # Training setup
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args['learning_rate_stage2'])
-loss_fn = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args['learning_rate_stage2'])
+loss_fn = torch.nn.CrossEntropyLoss()
 
 # Training loop
 logger.info("Starting final training...")

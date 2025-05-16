@@ -1,65 +1,90 @@
 from clearml import Task
 from clearml.automation import PipelineController
-import os
+import logging
 
-# 设置环境变量
-os.environ["CLEARML_API_ACCESS_KEY"] = os.getenv("CLEARML_API_ACCESS_KEY", "Q9JQUW7NG3L7UIGUQ99CH6APXN7CWX")
-os.environ["CLEARML_API_SECRET_KEY"] = os.getenv("CLEARML_API_SECRET_KEY", "ZDyUBTNev2TSyADi6gkFMEPRwMUBughNu4uVKUPjH7UsImaBOTLh2B6nVU2CwvYQTcw")
-os.environ["CLEARML_API_HOST"] = os.getenv("CLEARML_API_HOST", "https://api.clear.ml")
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# 可选：回调函数
-def pre_execute_callback_example(a_pipeline, a_node, current_param_override):
-    print(f"Cloning Task id={a_node.base_task_id} with parameters: {current_param_override}")
-    return True
-
-def post_execute_callback_example(a_pipeline, a_node):
-    print(f"Completed Task id={a_node.executed}")
-    return
+# Queue configuration
+EXECUTION_QUEUE = "vgg16"
 
 def run_pipeline():
-    # 初始化 pipeline
+    # Connecting ClearML with the current pipeline
     pipe = PipelineController(
-        name="DeepMind", 
+        name="DeepMind",
         project="VGG16",
-        version="2.0.0",
+        version="3.0.0",
         add_pipeline_tags=True
     )
 
-    pipe.set_default_execution_queue("vgg16")  # 替换成你的 ClearML queue 名
+    pipe.set_default_execution_queue(EXECUTION_QUEUE)
+    logger.info(f"Set default execution queue to: {EXECUTION_QUEUE}")
 
     # Step 1: Dataset Artifact
     pipe.add_step(
-        name="step1_dataset_artifact",
+        name="stage_data",
         base_task_project="VGG16-v2",
-        base_task_name="Pipeline Step 1: Dataset Loader"
+        base_task_name="Pipeline Step 1: Dataset Loader",
+        execution_queue=EXECUTION_QUEUE
     )
 
-    # Step 2: Process Dataset
+    # Step 2: Preprocess Dataset
     pipe.add_step(
-        name="step2_preprocess_data",
-        parents=["step1_dataset_artifact"],
+        name="stage_process",
+        parents=["stage_data"],
         base_task_project="VGG16-v2",
         base_task_name="Pipeline step 2 process image dataset",
+        execution_queue=EXECUTION_QUEUE,
         parameter_override={
-            "General/dataset_task_id": "${step1_dataset_artifact.id}"
-        },
-    )
-
-    # Step 3: Train Model
-    pipe.add_step(
-        name="step3_train_model",
-        parents=["step2_preprocess_data"],
-        base_task_project="VGG16-v2",
-        base_task_name="Pipeline Step 3 - Train Pneumonia Model",
-        parameter_override={
-            "General/dataset_task_id": "${step2_preprocess_data.id}"
+            "General/dataset_task_id": "${stage_data.id}"
         }
     )
 
+    # Step 3: Initial Training
+    pipe.add_step(
+        name="stage_train",
+        parents=["stage_process"],
+        base_task_project="VGG16-v2",
+        base_task_name="Pipeline Step 3 - Train Pneumonia Model",
+        execution_queue=EXECUTION_QUEUE,
+        parameter_override={
+            "General/dataset_task_id": "${stage_process.id}"
+        }
+    )
 
-    # 启动 pipeline
-    pipe.start(queue="vgg16")  # 用 pipeline 控制器队列
-    print("✅ Pipeline started.")
+    # Step 4: HPO
+    pipe.add_step(
+        name="stage_hpo",
+        parents=["stage_train", "stage_process"],
+        base_task_project="VGG16-v2",
+        base_task_name="HPO: batch_size & lr_stage2",
+        execution_queue=EXECUTION_QUEUE,
+        parameter_override={
+            "General/test_queue": EXECUTION_QUEUE,
+            "General/num_trials": 4,
+            "General/time_limit_minutes": 60,
+            "General/dataset_task_id": "${stage_process.id}",
+            "General/base_train_task_id": "${stage_train.id}"
+        }
+    )
+
+    # Step 5: Final Training with best HPO params
+    pipe.add_step(
+        name="stage_final_model",
+        parents=["stage_hpo", "stage_process"],
+        base_task_project="VGG16-v2",
+        base_task_name="Final VGG16 Training (from HPO)",
+        execution_queue=EXECUTION_QUEUE,
+        parameter_override={
+            "General/dataset_task_id": "${stage_process.id}",
+            "General/hpo_task_id": "${stage_hpo.id}"
+        }
+    )
+
+    logger.info("Starting pipeline locally with tasks on queue: %s", EXECUTION_QUEUE)
+    pipe.start_locally()
+    logger.info("Pipeline started successfully")
 
 if __name__ == "__main__":
     run_pipeline()

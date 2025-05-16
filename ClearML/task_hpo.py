@@ -1,6 +1,6 @@
 from clearml import Task, Dataset
 from clearml.automation import HyperParameterOptimizer
-from clearml.automation import UniformIntegerParameterRange, UniformParameterRange
+from clearml.automation import DiscreteParameterRange
 import logging
 import time
 import json
@@ -19,14 +19,14 @@ task = Task.init(
 
 # Connect arguments
 args = {
-    'base_train_task_id': '7af6b471472348e7adfa087da8feec2e',  
-    'num_trials': 5,
+    'base_train_task_id': '${step3_train_model.id}',
+    'num_trials': 4,
     'time_limit_minutes': 30,
-    'test_queue': None,
-    'dataset_task_id': '405caed14d034630b33cf083a9fcc28d',
+    'test_queue': 'vgg16',
+    'dataset_task_id': '${step2_preprocess_data.id}',
     'batch_size': 32,
     'learning_rate_stage2': 1e-5,
-    'learning_rate_stage1': 0.01,  # 固定值
+    'learning_rate_stage1': 0.01,
     'epochs_stage1': 20,
     'epochs_stage2': 10,
     'dropout_rate': 0.2,
@@ -45,17 +45,13 @@ task.execute_remotely(queue_name=args['test_queue'])
 BASE_TRAIN_TASK_ID = args['base_train_task_id']
 dataset_id = args['dataset_task_id']
 logger.info(f"Using base train task: {BASE_TRAIN_TASK_ID}")
-# logger.info(f"Using dataset id: {dataset_id}")
 
-# 确保数据集存在
-# Dataset.get(dataset_id=dataset_id)
-
-# 定义搜索空间
+# 定义搜索空间（离散值搜索）
 hpo = HyperParameterOptimizer(
     base_task_id=BASE_TRAIN_TASK_ID,
     hyper_parameters=[
-        UniformIntegerParameterRange('batch_size', min_value=32, max_value=48),
-        UniformParameterRange('learning_rate_stage2', min_value=5e-6, max_value=1e-5),
+        DiscreteParameterRange('batch_size', values=[32, 64]),
+        DiscreteParameterRange('learning_rate_stage2', values=[5e-6, 1e-5]),
     ],
     objective_metric_title='validation',
     objective_metric_series='accuracy',
