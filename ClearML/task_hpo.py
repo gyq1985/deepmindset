@@ -21,7 +21,7 @@ task = Task.init(
 args = {
     'base_train_task_id': '${step3_train_model.id}',
     'num_trials': 4,
-    'time_limit_minutes': 120,
+    'time_limit_minutes': 240,
     'test_queue': 'vgg16',
     'dataset_task_id': '${step2_preprocess_data.id}',
     'batch_size': 32,
