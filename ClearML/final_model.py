@@ -14,7 +14,7 @@ from utils import load_transformed_datasets
 
 # Setup
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 task = Task.init(
     project_name='VGG16-v2',
@@ -57,7 +57,7 @@ if not best_params:
 args['batch_size'] = int(best_params.get('batch_size', args['batch_size']))
 args['learning_rate_stage2'] = float(best_params.get('learning_rate_stage2', args['learning_rate_stage2']))
 
-logger.info(f"Using best parameters: batch_size={args['batch_size']}, learning_rate_stage2={args['learning_rate_stage2']}")
+log.info(f"Using best parameters: batch_size={args['batch_size']}, learning_rate_stage2={args['learning_rate_stage2']}")
 
 # Load processed dataset directories from artifact
 dataset_task = Task.get_task(task_id=args['dataset_task_id'])
@@ -99,7 +99,7 @@ optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters(
 loss_fn = torch.nn.CrossEntropyLoss()
 
 # Training loop
-logger.info("Starting final training...")
+log.info("Starting final training...")
 best_val_acc = 0.0
 for epoch in range(args['epochs_stage2']):
     model.train()
@@ -168,5 +168,5 @@ with open("classification_report_final.txt", "w") as f:
 task.upload_artifact("final_model_report", "classification_report_final.txt")
 task.upload_artifact("final_model_weights", "best_final_model.pt")
 
-logger.info("Final training completed. Model and report uploaded.")
+log.info("Final training completed. Model and report uploaded.")
 print("🎉 Final model training done!")

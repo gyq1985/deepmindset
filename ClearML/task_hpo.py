@@ -21,7 +21,7 @@ task = Task.init(
 args = {
     'base_train_task_id': '${step3_train_model.id}',
     'num_trials': 4,
-    'time_limit_minutes': 30,
+    'time_limit_minutes': 120,
     'test_queue': 'vgg16',
     'dataset_task_id': '${step2_preprocess_data.id}',
     'batch_size': 32,
@@ -39,7 +39,7 @@ args = {
 args = task.connect(args)
 logger.info(f"Connected parameters: {args}")
 
-task.execute_remotely(queue_name=args['test_queue'])
+task.execute_remotely()
 
 # 获取 base 训练任务和数据集
 BASE_TRAIN_TASK_ID = args['base_train_task_id']
