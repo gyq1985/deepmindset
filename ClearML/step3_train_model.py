@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix, classification_report
 from PIL import Image
 from clearml import Task, Logger
-from utils import load_transformed_dataset
+from utils import load_transformed_datasets
 
 # ClearML Task init
 Task.set_credentials(
@@ -55,7 +55,7 @@ class_indices = dataset_task.artifacts['class_indices'].get()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("GPU:",torch.cuda.is_available())
 # Data preprocessing
-train_loader, val_loader, test_loader, _ = load_transformed_datasets(
+train_loader, val_loader, test_loader, _, train_dataset = load_transformed_datasets(
     train_dir, val_dir, test_dir,
     img_size=args['img_size'],
     batch_size=args['batch_size']

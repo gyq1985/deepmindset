@@ -29,4 +29,4 @@ def load_transformed_datasets(train_dir, val_dir, test_dir, img_size=(224, 224),
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_loader, val_loader, test_loader, train_dataset.class_to_idx
+    return train_loader, val_loader, test_loader, train_dataset.class_to_idx,train_dataset
