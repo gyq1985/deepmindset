@@ -56,7 +56,7 @@ def run_pipeline():
     # Step 4: HPO
     pipe.add_step(
         name="stage_hpo",
-        parents=["stage_train", "stage_process"],
+        parents=["stage_data", "stage_process", "stage_train"],  
         base_task_project="VGG16-v2",
         base_task_name="HPO: batch_size & lr_stage2",
         execution_queue=EXECUTION_QUEUE,
