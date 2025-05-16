@@ -120,6 +120,10 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         val_acc_history.append(val_acc)
 
         print(f"Epoch {epoch+1}/{epochs} - Train Acc: {epoch_acc:.4f}, Val Acc: {val_acc:.4f}")
+        task.get_logger().report_scalar("train", "accuracy", epoch_acc, iteration=epoch)
+        task.get_logger().report_scalar("train", "loss", epoch_loss, iteration=epoch)
+        task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=epoch)
+        task.get_logger().report_scalar("validation", "loss", val_loss, iteration=epoch)
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
