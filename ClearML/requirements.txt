@@ -1,4 +1,4 @@
-# tensorflow==2.18.0 不能装官方版就使用colab的预装
+
 numpy==1.26.4
 pandas==2.2.2
 matplotlib==3.8.4
