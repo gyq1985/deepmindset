@@ -83,8 +83,10 @@ logger.info("Starting Hyperparameter Optimization...")
 hpo.start()
 
 # 等待任务结束
-logger.info(f"Waiting for optimization to complete ({args['time_limit_minutes']} minutes)...")
-time.sleep(args['time_limit_minutes'] * 60)
+# logger.info(f"Waiting for optimization to complete ({args['time_limit_minutes']} minutes)...")
+# time.sleep(args['time_limit_minutes'] * 60)
+logger.info("Waiting for optimization to complete...")
+hpo.wait()
 
 # 获取最优试验
 try:
