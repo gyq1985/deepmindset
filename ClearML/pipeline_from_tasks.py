@@ -63,7 +63,7 @@ def run_pipeline():
         parameter_override={
             "General/test_queue": EXECUTION_QUEUE,
             "General/num_trials": 4,
-            "General/time_limit_minutes": 65,
+            "General/time_limit_minutes": 80,
             "General/dataset_task_id": "${stage_process.id}",
             "General/base_train_task_id": "${stage_train.id}"
         }
