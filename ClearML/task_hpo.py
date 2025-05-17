@@ -83,10 +83,10 @@ logger.info("Starting Hyperparameter Optimization...")
 hpo.start()
 
 # 等待任务结束
-# logger.info(f"Waiting for optimization to complete ({args['time_limit_minutes']} minutes)...")
-# time.sleep(args['time_limit_minutes'] * 60)
-logger.info("Waiting for optimization to complete...")
-hpo.wait()
+logger.info(f"Waiting for optimization to complete ({args['time_limit_minutes']} minutes)...")
+time.sleep(args['time_limit_minutes'] * 60)
+# logger.info("Waiting for optimization to complete...")
+# hpo.wait()
 
 # 获取最优试验
 try:
@@ -109,6 +109,7 @@ try:
             json.dump(result, f, indent=4)
 
         task.upload_artifact('best_parameters', 'best_parameters.json')
+        # logger.info(f"Saved best parameters with accuracy: {result}")
         task.set_parameter('best_parameters', best_params)
         task.set_parameter('best_accuracy', best_acc)
     else:
