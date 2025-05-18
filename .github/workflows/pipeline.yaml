@@ -1,7 +1,7 @@
 name: Run ClearML Task
 
 on:
-  push:
+  pull_request:
     branches: [main]
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     env:
       CLEARML_API_ACCESS_KEY: ${{ secrets.CLEARML_API_ACCESS_KEY }}
       CLEARML_API_SECRET_KEY: ${{ secrets.CLEARML_API_SECRET_KEY }}
-      CLEARML_API_HOST: ${{ secrets.CLEARML_API_HOST }}
+      CLEARML_API_HOST: ${{ secrets.CLEARML_WEB_HOST }}
 
     steps:
       - uses: actions/checkout@v3
