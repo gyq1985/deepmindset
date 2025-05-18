@@ -83,10 +83,10 @@ logger.info("Starting Hyperparameter Optimization...")
 hpo.start()
 
 # 等待任务结束
-logger.info(f"Waiting for optimization to complete ({args['time_limit_minutes']} minutes)...")
-time.sleep(args['time_limit_minutes'] * 60)
-# logger.info("Waiting for optimization to complete...")
-# hpo.wait()
+# logger.info(f"Waiting for optimization to complete ({args['time_limit_minutes']} minutes)...")
+# time.sleep(args['time_limit_minutes'] * 60)
+logger.info("Waiting for optimization to complete...")
+hpo.wait()
 
 # 获取最优试验
 try:
@@ -96,6 +96,7 @@ try:
         best_params = best_exp.get_parameters()
         print("-------------get_best_params-----------", best_params)
         metrics = best_exp.get_last_scalar_metrics()
+        print("-------------get_metrics-----------", metrics)
         best_acc = metrics['validation']['accuracy'][-1] if 'validation' in metrics and 'accuracy' in metrics['validation'] else None
 
         logger.info("Best parameters found:")
@@ -106,13 +107,17 @@ try:
             'parameters': best_params,
             'accuracy': best_acc
         }
-        with open('best_parameters.json', 'w') as f:
+        temp_file = 'best_parameters.json'
+        with open(temp_file, 'w') as f:
             json.dump(result, f, indent=4)
 
-        task.upload_artifact('best_parameters', 'best_parameters.json')
-        # logger.info(f"Saved best parameters with accuracy: {result}")
+        task.upload_artifact('best_parameters', temp_file)
+        logger.info(f"Saved best parameters with accuracy: {result}")
+        print("----result------",result)
         task.set_parameter('best_parameters', best_params)
         task.set_parameter('best_accuracy', best_acc)
+        logger.info("Best parameters saved as both artifact and task parameters")
+        print("Best parameters saved as both artifact and task parameters by PRINT")
     else:
         logger.warning("No experiments completed.")
 except Exception as e:

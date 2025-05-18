@@ -78,7 +78,7 @@ loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.classifier.parameters(), lr=args['learning_rate_stage1'])
 
 # Helper function for training
-def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, earlystop_patience):
+def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, earlystop_patience,is_loader):
     best_val_acc = 0.0
     best_model_wts = None
     patience = 0
@@ -120,12 +120,13 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         val_acc_history.append(val_acc)
 
         print(f"Epoch {epoch+1}/{epochs} - Train Acc: {epoch_acc:.4f}, Val Acc: {val_acc:.4f}")
-        task.get_logger().report_scalar("train", "accuracy", epoch_acc, iteration=epoch)
-        task.get_logger().report_scalar("train", "loss", epoch_loss, iteration=epoch)
-        task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=epoch)
-        task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=0)
-        task.get_logger().report_scalar("validation", "loss", val_loss, iteration=epoch)
-        print(f"[DEBUG] Reported val_acc={val_acc:.4f} to ClearML at iteration=0 & TRAIN,VAL")
+        if is_loader:
+            task.get_logger().report_scalar("train", "accuracy", epoch_acc, iteration=epoch)
+            task.get_logger().report_scalar("train", "loss", epoch_loss, iteration=epoch)
+            task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=epoch)
+            # task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=0)
+            task.get_logger().report_scalar("validation", "loss", val_loss, iteration=epoch)
+            print(f"[DEBUG] Reported val_acc={val_acc:.4f} to ClearML at iteration=0 & TRAIN,VAL")
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
@@ -143,7 +144,7 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
 # Stage 1 Training
 model, acc1, val_acc1, loss1, val_loss1 = train_model(
     model, train_loader, val_loader, optimizer, loss_fn,
-    args['epochs_stage1'], args['earlystop_patience']
+    args['epochs_stage1'], args['earlystop_patience'],is_loader=False
 )
 
 # Stage 2 Fine-tuning
@@ -153,7 +154,7 @@ for param in model.features[args['freeze_until_layer']:].parameters():
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args['learning_rate_stage2'])
 model, acc2, val_acc2, loss2, val_loss2 = train_model(
     model, train_loader, val_loader, optimizer, loss_fn,
-    args['epochs_stage2'], args['earlystop_patience']
+    args['epochs_stage2'], args['earlystop_patience'],is_loader=True
 )
 
 # Save best model
@@ -189,7 +190,7 @@ with torch.no_grad():
 
 test_acc = (np.array(all_preds) == np.array(all_labels)).mean()
 task.get_logger().report_scalar("validation", "accuracy", test_acc, iteration=0)
-print(f"[DEBUG] Reported test_acc={test_acc:.4f} to ClearML as objective metric")
+print(f"[DEBUG] Reported test_acc={test_acc:.4f} to ClearML as objective metric--------")
 
 cm = confusion_matrix(all_labels, all_preds)
 plt.figure(figsize=(6, 5))
