@@ -97,8 +97,8 @@ try:
         print("-------------get_best_params-----------", best_params)
         metrics = best_exp.get_last_scalar_metrics()
         print("-------------get_metrics-----------", metrics)
-        best_acc = metrics['validation']['accuracy'][-1] if 'validation' in metrics and 'accuracy' in metrics['validation'] else None
-
+        best_acc = metrics.get('validation', {}).get('accuracy', {}).get('last', None)
+        print("--------best_acc------------",best_acc)
         logger.info("Best parameters found:")
         logger.info(best_params)
         logger.info(f"Best validation accuracy: {best_acc}")
