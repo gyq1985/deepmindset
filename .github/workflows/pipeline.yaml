@@ -34,4 +34,4 @@ jobs:
 
       - name: Run pipeline
         run: |
-          python s1_dataset_artifact.py
+          python ClearML/s1_dataset_artifact.py
