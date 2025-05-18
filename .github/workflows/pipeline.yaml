@@ -1,7 +1,7 @@
 name: Run ClearML Task
 
 on:
-  pull_request:
+  push:
     branches: [main]
 
 jobs:
@@ -35,4 +35,3 @@ jobs:
       - name: Run pipeline
         run: |
           python s1_dataset_artifact.py
-# Trigger CI manually
