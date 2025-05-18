@@ -125,6 +125,7 @@ def train_model(model, train_loader, val_loader, optimizer, loss_fn, epochs, ear
         task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=epoch)
         task.get_logger().report_scalar("validation", "accuracy", val_acc, iteration=0)
         task.get_logger().report_scalar("validation", "loss", val_loss, iteration=epoch)
+        print(f"[DEBUG] Reported val_acc={val_acc:.4f} to ClearML at iteration=0 & TRAIN,VAL")
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
@@ -185,6 +186,10 @@ with torch.no_grad():
         outputs = model(inputs)
         all_preds.extend(outputs.argmax(1).cpu().numpy())
         all_labels.extend(labels.numpy())
+
+test_acc = (np.array(all_preds) == np.array(all_labels)).mean()
+task.get_logger().report_scalar("validation", "accuracy", test_acc, iteration=0)
+print(f"[DEBUG] Reported test_acc={test_acc:.4f} to ClearML as objective metric")
 
 cm = confusion_matrix(all_labels, all_preds)
 plt.figure(figsize=(6, 5))

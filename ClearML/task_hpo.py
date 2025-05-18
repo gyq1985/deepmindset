@@ -94,6 +94,7 @@ try:
     if top_exp:
         best_exp = top_exp[0]
         best_params = best_exp.get_parameters()
+        print("-------------get_best_params-----------", best_params)
         metrics = best_exp.get_last_scalar_metrics()
         best_acc = metrics['validation']['accuracy'][-1] if 'validation' in metrics and 'accuracy' in metrics['validation'] else None
 

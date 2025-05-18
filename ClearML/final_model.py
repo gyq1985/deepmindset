@@ -28,6 +28,7 @@ logger = Logger.current_logger()
 args = {
     'dataset_task_id': None,  # to be overridden in pipeline
     'hpo_task_id': None,
+    'test_queue': 'vgg16',
     'img_size': (224, 224),
     'batch_size': 32,
     'learning_rate_stage2': 1e-5,

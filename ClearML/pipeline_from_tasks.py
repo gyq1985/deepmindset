@@ -78,7 +78,8 @@ def run_pipeline():
         execution_queue=EXECUTION_QUEUE,
         parameter_override={
             "General/dataset_task_id": "${stage_process.id}",
-            "General/hpo_task_id": "${stage_hpo.id}"
+            "General/hpo_task_id": "${stage_hpo.id}",
+            "General/test_queue": EXECUTION_QUEUE
         }
     )
 
