@@ -1,7 +1,7 @@
 name: Run ClearML Task
 
 on:
-  push:
+  pull_request:
     branches: [main]
 
 jobs:
