@@ -45,6 +45,10 @@ We used ClearML for pipeline orchestration and Streamlit Cloud to deploy a user-
 │   └── Streamlit GUI code for model deployment and user interaction.
 
 ```
+
+> The GUI Interface should contain the compressed package of the best model. However, the compressed package of the model is too large to be uploaded to github. Download address of the compressed package of the best model:
+https://files.clear.ml/VGG16/.pipelines/DeepMind/stage_final_model.f80dba5f8f104bd9830dd87303c7652e/artifacts/final_model_weights/best_final_model.pt
+
 ## Key Feature
 - Agile-based Iterative Development (3 Sprints)
 
